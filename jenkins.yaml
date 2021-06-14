@@ -6,7 +6,7 @@ metadata:
   namespace: default
 ---
 kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: jenkins
   namespace: default
@@ -31,7 +31,7 @@ rules:
   verbs: ["create","delete","get","list","patch","update","watch"]
 
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: jenkins
@@ -68,6 +68,9 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumes"]
   verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -86,7 +89,7 @@ spec:
     spec:
       containers:
         - name: jenkins
-          image: myjenkins:latest
+          image: asonadmin/jenkins-server:tagname
           env:
             - name: JAVA_OPTS
               value: -Djenkins.install.runSetupWizard=false
@@ -100,7 +103,7 @@ spec:
               mountPath: /var/jenkins_home
             - name: docker-sock-volume
               mountPath: "/var/run/docker.sock"
-          imagePullPolicy: Never
+          imagePullPolicy: Always
       volumes:
         # This allows jenkins to use the docker daemon on the host, for running builds
         # see https://stackoverflow.com/questions/27879713/is-it-ok-to-run-docker-from-inside-docker
@@ -127,6 +130,20 @@ spec:
     - name: jnlp
       port: 50000
       targetPort: 50000
+  selector:
+    app: jenkins
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins-public
+  namespace: default
+spec:
+  type: LoadBalancer
+  ports:
+    - name: jenkins-public-lb
+      port: 80
+      targetPort: 8080
   selector:
     app: jenkins
 ---
